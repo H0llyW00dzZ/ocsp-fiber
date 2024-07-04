@@ -86,8 +86,10 @@ func TestOCSPMiddleware_ErrorCases(t *testing.T) {
 
 	// Create the OCSP middleware with the configuration.
 	ocspMiddleware := ocsp.New(ocsp.Config{
-		Issuer:    issuerCert,
-		Responder: responder.URL,
+		Issuer: issuerCert,
+		ResponderFunc: func(cert *x509.Certificate) string {
+			return responder.URL
+		},
 	})
 
 	// Create a new Fiber app
@@ -169,7 +171,6 @@ func TestOCSPMiddleware_ErrorCases(t *testing.T) {
 
 	// Make requests to the server using each client
 	for _, client := range clients {
-
 		req, err := http.NewRequest("GET", "https://localhost:443/test", nil)
 		if err != nil {
 			t.Fatal(err)

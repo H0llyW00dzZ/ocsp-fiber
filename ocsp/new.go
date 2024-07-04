@@ -40,8 +40,11 @@ func New(config Config) fiber.Handler {
 		// Create an io.Reader from the OCSP request byte slice.
 		ocspReqReader := bytes.NewReader(ocspReq)
 
+		// Get the OCSP responder URL based on the client certificate.
+		responderURL := config.ResponderFunc(clientCert)
+
 		// Send the OCSP request to the responder.
-		resp, err := http.Post(config.Responder, MIMEApplicationOCSPRequest, ocspReqReader)
+		resp, err := http.Post(responderURL, MIMEApplicationOCSPRequest, ocspReqReader)
 		if err != nil {
 			return config.ResponseHandler(c, fiber.StatusInternalServerError, fmt.Sprintf("failed to send OCSP request: %v", err))
 		}

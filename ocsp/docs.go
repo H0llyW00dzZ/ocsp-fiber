@@ -10,6 +10,7 @@
 // # Usage
 //
 //	import (
+//		"crypto/x509"
 //		"github.com/gofiber/fiber/v2"
 //		"github.com/H0llyW00dzZ/ocsp-fiber/ocsp"
 //	)
@@ -18,8 +19,17 @@
 //		app := fiber.New()
 //
 //		ocspMiddleware := ocsp.New(ocsp.Config{
-//			Issuer:    issuerCert,
-//			Responder: "http://ocsp.example.com",
+//			Issuer: issuerCert,
+//			ResponderFunc: func(cert *x509.Certificate) string {
+//				// Determine the OCSP responder URL based on the client certificate
+//				if cert.Issuer.CommonName == "Example CA" {
+//					return "http://example.com/ocsp"
+//				} else if cert.Issuer.CommonName == "Another CA" {
+//					return "http://another-ca.com/ocsp"
+//				}
+//				// Default responder URL
+//				return "http://default-responder.com/ocsp"
+//			},
 //		})
 //
 //		app.Use(ocspMiddleware)

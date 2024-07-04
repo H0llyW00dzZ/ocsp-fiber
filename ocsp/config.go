@@ -32,7 +32,14 @@ type Config struct {
 	// Responder is the URL of the OCSP responder.
 	// It specifies the endpoint where the OCSP requests will be sent to check the Revocation status of client certificates.
 	// The Responder field must be set to a valid URL string.
+	//
+	// Deprecated: Use ResponderFunc Instead.
 	Responder string
+
+	// ResponderFunc is a function that takes a client certificate and returns the OCSP responder URL.
+	// It allows dynamic selection of the OCSP responder based on the client certificate.
+	// The ResponderFunc field must be set to a valid function.
+	ResponderFunc func(*x509.Certificate) string
 
 	// ResponseHandler is a function that handles the response when an error occurs.
 	// If not provided, a default JSON response handler will be used.
