@@ -13,6 +13,22 @@ ocsp-fiber is a Go package that provides an [`OCSP`](https://datatracker.ietf.or
 - Seamless integration with the Fiber web framework
 - Easy to use and customize
 
+## Hacking
+
+To ensure the reliability and correctness of the ocsp-fiber package, it includes a set of tests. The tests cover various scenarios and edge cases to validate the behavior of the OCSP middleware.
+
+### Hack Setup
+
+The tests require a valid certificate and key pair for testing purposes. It is important to use a proper certificate and key pair to simulate a production-like environment. Using insecure options like `InsecureSkipVerify` is considered `bad practice` and should be avoided in tests.
+
+To set up the test environment, follow these steps:
+
+1. Obtain a valid certificate and key pair from a trusted (public) or private Certificate Authority (CA) for a domain that you own or control.
+2. Place the certificate and key files in the `testdata` directory of the package.
+3. Update the test code to load the certificate and key files from the `testdata` directory.
+
+Make sure that the certificate is properly signed by a trusted (public) or private CA and that the domain used in the certificate matches the host you will be testing against.
+
 ## License
 
 ocsp-fiber is released under the [BSD 3-Clause License](LICENSE).
