@@ -102,7 +102,7 @@ type RequestOptions struct {
 // createOCSPRequest creates an OCSP request for the given client certificate and issuer.
 func createOCSPRequest(clientCert *x509.Certificate, issuer *x509.Certificate, options RequestOptions) ([]byte, error) {
 	if options.Hash <= 0 {
-		options.Hash = crypto.SHA1 // Default to SHA1 if options.Hash is not set
+		options.Hash = crypto.SHA1 // Default to SHA1 if [options.Hash] is not set
 	}
 
 	return ocsp.CreateRequest(clientCert, issuer, &ocsp.RequestOptions{Hash: options.Hash})
