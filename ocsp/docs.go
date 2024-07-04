@@ -43,7 +43,7 @@
 // The OCSP middleware is configured using the [ocsp.Config] struct. The important fields are:
 //
 //   - Issuer: The certificate of the issuing CA. It is used to validate the client certificates against the issuer's public key.
-//   - Responder: The URL of the OCSP responder. It specifies the endpoint where the OCSP requests will be sent to check the revocation status of client certificates.
+//   - ResponderFunc: A function that takes a client certificate and returns the URL of the OCSP responder. It allows for dynamic selection of the OCSP responder based on the client certificate.
 //   - ResponseHandler: A function that handles the response when an error occurs. If not provided, a default JSON response handler will be used.
 //
 // # Revocation Reasons
