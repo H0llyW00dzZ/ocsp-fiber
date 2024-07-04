@@ -2,6 +2,8 @@
 //
 // License: BSD 3-Clause License
 
+// Note: OCSP Implement here can be used in go application for mTLS (e.g, in cli, tools)
+
 package ocsp_test
 
 import (
@@ -195,5 +197,231 @@ func TestOCSPMiddleware_ErrorCases(t *testing.T) {
 		if string(body) != expectedBody {
 			t.Errorf("Expected response body to be '%s', but got '%s'", expectedBody, string(body))
 		}
+	}
+}
+
+func TestOCSPMiddleware_ValidResponse(t *testing.T) {
+	// Generate a test certificate and private key
+	testCert, testKey, err := generateTestCertificate()
+	if err != nil {
+		t.Fatalf("Failed to generate test certificate: %v", err)
+	}
+
+	// Create a mock OCSP responder
+	responder := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Generate a valid OCSP response for the test certificate
+		ocspResp, err := generateOCSPResponse(testCert, testCert, testKey)
+		if err != nil {
+			t.Fatalf("Failed to generate OCSP response: %v", err)
+		}
+
+		// Write the OCSP response to the response writer
+		w.WriteHeader(http.StatusOK)
+		w.Write(ocspResp)
+	}))
+	defer responder.Close()
+
+	// Create the OCSP middleware with the test certificate's issuer and the mock OCSP responder
+	ocspMiddleware := ocsp.New(ocsp.Config{
+		Issuer: testCert,
+		ResponderFunc: func(cert *x509.Certificate) string {
+			return responder.URL
+		},
+	})
+
+	// Create a new Fiber app
+	app := fiber.New()
+
+	// Use the OCSP middleware
+	app.Use(ocspMiddleware)
+
+	// Define a test route
+	app.Get("/", func(c *fiber.Ctx) error {
+		return c.SendString("Hello, World!")
+	})
+
+	// Create a test listener with TLS configuration
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("Failed to create test listener: %v", err)
+	}
+	defer ln.Close()
+
+	// Create a TLS configuration with the test certificate
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{
+			{
+				Certificate: [][]byte{testCert.Raw},
+				PrivateKey:  testKey,
+			},
+		},
+		ClientAuth: tls.RequestClientCert,
+		ClientCAs:  x509.NewCertPool(),
+	}
+	tlsConfig.ClientCAs.AddCert(testCert)
+
+	// Wrap the listener with TLS
+	tlsListener := tls.NewListener(ln, tlsConfig)
+
+	// Start the server with the TLS listener
+	go func() {
+		if err := app.Listener(tlsListener); err != nil {
+			t.Errorf("Failed to start server: %v", err)
+		}
+	}()
+
+	// Create a custom certificate pool for the client
+	clientCertPool := x509.NewCertPool()
+	clientCertPool.AddCert(testCert)
+
+	// Create a test client with TLS configuration
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				Certificates: []tls.Certificate{
+					{
+						Certificate: [][]byte{testCert.Raw},
+						PrivateKey:  testKey,
+					},
+				},
+				// Note: In a production environment, if a Private CA is used, it may need to be manually installed.
+				RootCAs: clientCertPool,
+			},
+		},
+	}
+
+	// Perform the request
+	resp, err := client.Get("https://" + tlsListener.Addr().String())
+	if err != nil {
+		t.Fatalf("Failed to perform request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Check the response status code
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Unexpected status code. Expected: %d, Got: %d", http.StatusOK, resp.StatusCode)
+	}
+
+	// Check the response body
+	expectedBody := "Hello, World!"
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("Failed to read response body: %v", err)
+	}
+	if string(body) != expectedBody {
+		t.Errorf("Unexpected response body. Expected: %s, Got: %s", expectedBody, string(body))
+	}
+}
+
+func TestOCSPMiddleware_RevokedCertificate(t *testing.T) {
+	// Generate a test certificate and private key
+	testCert, testKey, err := generateTestCertificate()
+	if err != nil {
+		t.Fatalf("Failed to generate test certificate: %v", err)
+	}
+
+	// Create a mock OCSP responder
+	responder := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Generate a revoked OCSP response for the test certificate
+		ocspResp, err := generateRevokedOCSPResponse(testCert, testCert, testKey, 1)
+		if err != nil {
+			t.Fatalf("Failed to generate OCSP response: %v", err)
+		}
+
+		// Write the OCSP response to the response writer
+		w.WriteHeader(http.StatusOK)
+		w.Write(ocspResp)
+	}))
+	defer responder.Close()
+
+	// Create the OCSP middleware with the test certificate's issuer and the mock OCSP responder
+	ocspMiddleware := ocsp.New(ocsp.Config{
+		Issuer: testCert,
+		ResponderFunc: func(cert *x509.Certificate) string {
+			return responder.URL
+		},
+	})
+
+	// Create a new Fiber app
+	app := fiber.New()
+
+	// Use the OCSP middleware
+	app.Use(ocspMiddleware)
+
+	// Define a test route
+	app.Get("/", func(c *fiber.Ctx) error {
+		return c.SendString("Hello, World!")
+	})
+
+	// Create a test listener with TLS configuration
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("Failed to create test listener: %v", err)
+	}
+	defer ln.Close()
+
+	// Create a TLS configuration with the test certificate
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{
+			{
+				Certificate: [][]byte{testCert.Raw},
+				PrivateKey:  testKey,
+			},
+		},
+		ClientAuth: tls.RequestClientCert,
+		ClientCAs:  x509.NewCertPool(),
+	}
+	tlsConfig.ClientCAs.AddCert(testCert)
+
+	// Wrap the listener with TLS
+	tlsListener := tls.NewListener(ln, tlsConfig)
+
+	// Start the server with the TLS listener
+	go func() {
+		if err := app.Listener(tlsListener); err != nil {
+			t.Errorf("Failed to start server: %v", err)
+		}
+	}()
+
+	// Create a custom certificate pool for the client
+	clientCertPool := x509.NewCertPool()
+	clientCertPool.AddCert(testCert)
+
+	// Create a test client with TLS configuration
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				Certificates: []tls.Certificate{
+					{
+						Certificate: [][]byte{testCert.Raw},
+						PrivateKey:  testKey,
+					},
+				},
+				RootCAs:            clientCertPool,
+				InsecureSkipVerify: true,
+			},
+		},
+	}
+
+	// Perform the request
+	resp, err := client.Get("https://" + tlsListener.Addr().String())
+	if err != nil {
+		t.Fatalf("Failed to perform request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Check the response status code
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("Unexpected status code. Expected: %d, Got: %d", http.StatusUnauthorized, resp.StatusCode)
+	}
+
+	// Check the response body
+	expectedBody := `{"error":"Certificate revoked: Key Compromise"}`
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("Failed to read response body: %v", err)
+	}
+	if string(body) != expectedBody {
+		t.Errorf("Unexpected response body. Expected: %s, Got: %s", expectedBody, string(body))
 	}
 }
