@@ -255,6 +255,7 @@ func TestOCSPMiddleware_ValidResponse(t *testing.T) {
 				PrivateKey:  testKey,
 			},
 		},
+		// Note: In a production environment, this may need changed to RequireAndVerifyClientCert.
 		ClientAuth: tls.RequestClientCert,
 		ClientCAs:  x509.NewCertPool(),
 	}
