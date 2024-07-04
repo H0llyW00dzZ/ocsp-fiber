@@ -5,6 +5,7 @@
 package ocsp
 
 import (
+	"crypto"
 	"crypto/x509"
 
 	"github.com/gofiber/fiber/v2"
@@ -36,6 +37,10 @@ type Config struct {
 	// ResponseHandler is a function that handles the response when an error occurs.
 	// If not provided, a default JSON response handler will be used.
 	ResponseHandler ResponseHandler
+
+	// RequestOptions specifies the options for creating OCSP requests.
+	// If not provided, default options will be used.
+	RequestOptions RequestOptions
 }
 
 // Response represents an OCSP response.
@@ -87,4 +92,18 @@ func defaultResponseHandler(c *fiber.Ctx, statusCode int, message string) error 
 	return c.Status(statusCode).JSON(fiber.Map{
 		"error": message,
 	})
+}
+
+// RequestOptions represents the options for creating an OCSP request.
+type RequestOptions struct {
+	Hash crypto.Hash
+}
+
+// createOCSPRequest creates an OCSP request for the given client certificate and issuer.
+func createOCSPRequest(clientCert *x509.Certificate, issuer *x509.Certificate, options RequestOptions) ([]byte, error) {
+	if options.Hash <= 0 {
+		options.Hash = crypto.SHA1 // Default to SHA1 if [options.Hash] is not set
+	}
+
+	return ocsp.CreateRequest(clientCert, issuer, &ocsp.RequestOptions{Hash: options.Hash})
 }
