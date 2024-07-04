@@ -30,7 +30,7 @@
 //
 // # Configuration
 //
-// The OCSP middleware is configured using the ocsp.Config struct. The important fields are:
+// The OCSP middleware is configured using the [ocsp.Config] struct. The important fields are:
 //
 //   - Issuer: The certificate of the issuing CA. It is used to validate the client certificates against the issuer's public key.
 //   - Responder: The URL of the OCSP responder. It specifies the endpoint where the OCSP requests will be sent to check the revocation status of client certificates.
