@@ -32,7 +32,7 @@ func New(config Config) fiber.Handler {
 		clientCert := tlsConnState.PeerCertificates[0]
 
 		// Create an OCSP request for the client certificate.
-		ocspReq, err := ocsp.CreateRequest(clientCert, config.Issuer, nil)
+		ocspReq, err := createOCSPRequest(clientCert, config.Issuer, config.RequestOptions)
 		if err != nil {
 			return config.ResponseHandler(c, fiber.StatusInternalServerError, fmt.Sprintf("failed to create OCSP request: %v", err))
 		}
